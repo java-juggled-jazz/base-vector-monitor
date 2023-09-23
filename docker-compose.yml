@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:mainline-alpine3.18-slim
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    expose:
+      - "80"
+    networks:
+      - prometheus-network
+    volumes:
+      - ${NGINX_CONF_DIR}:/etc/nginx/nginx.conf
+      - ${NGINX_LOG_DIR}:/var/log/nginx/
+    depends_on:
+      - grafana
+      - prometheus
+    
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:main
+    restart: unless-stopped
+    networks:
+      - prometheus-network
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - DS_PROMETHEUS=prometheus
+    volumes: 
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+      - ./grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    privileged: true
+    depends_on:
+      - prometheus
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:main
+    restart: unless-stopped
+    networks:
+      - prometheus-network
+    ports:
+      - "9090:9090"
+    volumes: 
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    privileged: true
+
+networks:
+  prometheus-network:
+    driver: bridge
