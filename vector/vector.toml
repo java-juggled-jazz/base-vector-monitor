@@ -1,0 +1,12 @@
+[sources.nginx-logs]
+type = "demo_logs"
+interval = 1.0
+format = "json"
+
+[transforms.nginx-logs]
+
+[sinks.nginx-to-prometheus]
+inputs = ["demo_logs"]
+target = "stdout"
+type = "console"
+encoding.codec = "json"
