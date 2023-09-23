@@ -1,0 +1,4 @@
+grafana/logs/
+prometheus/logs/
+nginx/logs/
+vector/logs/
