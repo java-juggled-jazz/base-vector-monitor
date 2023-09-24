@@ -52,6 +52,15 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     privileged: true
 
+  vector:
+    container_name: vector
+    image: timberio/vector:0.32.2-alpine
+    restart: unless-stopped
+    networks:
+      - prometheus-network
+    volumes:
+      - ${NGINX_LOG_DIR}:/var/log/nginx
+
 networks:
   prometheus-network:
     driver: bridge
