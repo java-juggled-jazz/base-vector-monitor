@@ -1,24 +1,34 @@
 [sources.nginx-logs]
-type = "demo_logs"
+type = "file"
 interval = 1.0
 format = "json"
+include = ["/var/log/nginx/access.log"]
+read_from = "beginning"
 
-[transforms.nginx-logs]
-type = "log_to_metric"
-inputs = [ "nginx-logs" ]
+[transforms.nginx-metrics]
+type = "remap"
+inputs = ["nginx-logs"]
+source = """
+. = parse_regex!(.message, r'^\"(?P<timestamp>.*)\" client=(?P<client>.*) method=(?P<method>.*) request=\"(?P<method_type>.*) (?P<request_path>.*) (?P<http_version>.*)\" request_length=(?P<request_length>.*) status=(?P<status>.*) bytes_sent=(?P<bytes_sent>.*) body_bytes_sent=(?P<body_bytes_sent>.*) referer=(?P<referer>.*) user_agent=\"(?P<user_agent>.*)\" upstream_addr=(?P<upstream_addr>.*) upstream_status=(?P<upstream_status>.*) request_time=(?P<request_time>.*) upstream_response_time=(?P<upstream_response_time>.*) upstream_connect_time=(?P<upstream_connect_time>.*) upstream_header_time=(?P<upstream_header_time>.*)$')
+.timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
+.request_length = to_int!(.request_length)
+.status = to_int!(.status)
+.bytes_sent = to_int!(.bytes_sent)
+.body_bytes_sent = to_int!(.body_bytes_sent)
+.upstream_status = to_int!(.upstream_status)
+.request_time = to_float!(.request_time)
+.upstream_response_time = to_float!(.upstream_response_time)
+.upstream_connect_time = to_float!(.upstream_connect_time)
+.upstream_header_time = to_float!(.upstream_header_time)
+.host = "YOUR_HOSTNAME_HERE"
+"""
 
-  [transforms.my_transform_id.metrics]
-  kind = "incremental"
-  type = "counter"
-
-
-[sinks.nginx-to-prometheus]
-inputs = ["demo_logs"]
-target = "stdout"
+[sinks.metrics-to-console]
 type = "console"
-encoding.codec = "json"
-
-[sinks.nginx-to-console]
-type = "console"
-inputs = [ "my-source-or-transform-id" ]
+inputs = ["nginx-metrics"]
 target = "stdout"
+
+[sinks.metrics-to-prometheus]
+type = "prometheus_exporter"
+inputs = [ "nginx-metrics" ]
+address = "0.0.0.0:9598"
