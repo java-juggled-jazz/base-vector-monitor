@@ -60,6 +60,8 @@ services:
       - prometheus-network
     volumes:
       - ${NGINX_LOG_DIR}:/var/log/nginx
+    depends_on:
+      prometheus
 
 networks:
   prometheus-network:
