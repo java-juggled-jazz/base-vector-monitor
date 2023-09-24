@@ -4,9 +4,21 @@ interval = 1.0
 format = "json"
 
 [transforms.nginx-logs]
+type = "log_to_metric"
+inputs = [ "nginx-logs" ]
+
+  [transforms.my_transform_id.metrics]
+  kind = "incremental"
+  type = "counter"
+
 
 [sinks.nginx-to-prometheus]
 inputs = ["demo_logs"]
 target = "stdout"
 type = "console"
 encoding.codec = "json"
+
+[sinks.nginx-to-console]
+type = "console"
+inputs = [ "my-source-or-transform-id" ]
+target = "stdout"
