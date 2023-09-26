@@ -29,13 +29,10 @@ services:
       - "3000:3000"
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_SERVER_ROOT_URL=https://localhost/grafana
       - DS_PROMETHEUS=prometheus
     volumes: 
-      - ./grafana/data:/var/lib/grafana
-      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
-      - ./grafana/dashboard.json:/var/lib/grafana/dashboards/dashboard.json
-      - ./grafana/default.yaml:/etc/grafana/provisioning/dashboards/default.yaml
-      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/:/var/lib/grafana
     privileged: true
     depends_on:
       - prometheus
@@ -58,8 +55,11 @@ services:
     restart: unless-stopped
     networks:
       - prometheus-network
+    ports:
+      - "8080:8080"
     volumes:
       - ${NGINX_LOG_DIR}:/var/log/nginx
+      - ${VECTOR_CONF_DIR}:/etc/vector/vector.toml
     depends_on:
       - prometheus
 

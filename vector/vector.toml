@@ -1,7 +1,5 @@
 [sources.nginx-logs]
 type = "file"
-interval = 1.0
-format = "json"
 include = ["/var/log/nginx/access.log"]
 read_from = "beginning"
 
@@ -27,8 +25,8 @@ source = """
 type = "console"
 inputs = ["nginx-metrics"]
 target = "stdout"
+encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
 inputs = [ "nginx-metrics" ]
-address = "0.0.0.0:9598"
