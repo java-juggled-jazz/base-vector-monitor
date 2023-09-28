@@ -30,3 +30,5 @@ encoding.codec = "json"
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
 inputs = [ "nginx-metrics" ]
+namespace = "nginx-metrics"
+address = "0.0.0.0:8080"
