@@ -1,11 +1,16 @@
-[sources.nginx-logs]
+[sources.nginx-file-scanner]
 type = "file"
 include = ["/var/log/nginx/access.log"]
 read_from = "beginning"
 
-[transforms.nginx-metrics]
+[sources.nginx-metrics]
+type = "internal_metrics"
+namespace = "vector"
+scrape_interval_secs = 1
+
+[transforms.nginx-metrics-remap]
 type = "remap"
-inputs = ["nginx-logs"]
+inputs = ["nginx-file-scanner"]
 source = """
 . = parse_regex!(.message, r'^\"(?P<timestamp>.*)\" client=(?P<client>.*) method=(?P<method>.*) request=\"(?P<method_type>.*) (?P<request_path>.*) (?P<http_version>.*)\" request_length=(?P<request_length>.*) status=(?P<status>.*) bytes_sent=(?P<bytes_sent>.*) body_bytes_sent=(?P<body_bytes_sent>.*) referer=(?P<referer>.*) user_agent=\"(?P<user_agent>.*)\" upstream_addr=(?P<upstream_addr>.*) upstream_status=(?P<upstream_status>.*) request_time=(?P<request_time>.*) upstream_response_time=(?P<upstream_response_time>.*) upstream_connect_time=(?P<upstream_connect_time>.*) upstream_header_time=(?P<upstream_header_time>.*)$')
 .timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
