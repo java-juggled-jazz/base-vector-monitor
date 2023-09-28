@@ -28,12 +28,12 @@ source = """
 
 [sinks.metrics-to-console]
 type = "console"
-inputs = ["nginx-metrics"]
+inputs = ["nginx-metrics-remap"]
 target = "stdout"
 encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-metrics" ]
+inputs = [ "nginx-metrics", "nginx-metrics-remap" ]
 namespace = "nginx-metrics"
 address = "0.0.0.0:8080"
