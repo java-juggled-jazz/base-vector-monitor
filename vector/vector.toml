@@ -3,17 +3,14 @@ type = "file"
 include = ["/var/log/nginx/access.log"]
 read_from = "beginning"
 
-[sources.nginx-metrics]
-type = "internal_metrics"
-namespace = "vector"
-scrape_interval_secs = 1
-
-[transforms.nginx-metrics-remap]
+[transforms.nginx-logs-remap]
 type = "remap"
 inputs = ["nginx-file-scanner"]
 source = """
-. = parse_regex!(.message, r'^\"(?P<timestamp>.*)\" client=(?P<client>.*) method=(?P<method>.*) request=\"(?P<method_type>.*) (?P<request_path>.*) (?P<http_version>.*)\" request_length=(?P<request_length>.*) status=(?P<status>.*) bytes_sent=(?P<bytes_sent>.*) body_bytes_sent=(?P<body_bytes_sent>.*) referer=(?P<referer>.*) user_agent=\"(?P<user_agent>.*)\" upstream_addr=(?P<upstream_addr>.*) upstream_status=(?P<upstream_status>.*) request_time=(?P<request_time>.*) upstream_response_time=(?P<upstream_response_time>.*) upstream_connect_time=(?P<upstream_connect_time>.*) upstream_header_time=(?P<upstream_header_time>.*)$')
-.timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
+. |= parse_regex!(.message, r'^\"(?P<timestamp>.*)\" client=(?P<client>.*) method=(?P<method>.*) request=\"(?P<method_type>.*) (?P<request_path>.*) (?P<http_version>.*)\" request_length=(?P<request_length>.*) status=(?P<status>.*) bytes_sent=(?P<bytes_sent>.*) body_bytes_sent=(?P<body_bytes_sent>.*) referer=(?P<referer>.*) user_agent=\"(?P<user_agent>.*)\" upstream_addr=(?P<upstream_addr>.*) upstream_status=(?P<upstream_status>.*) request_time=(?P<request_time>.*) upstream_response_time=(?P<upstream_response_time>.*) upstream_connect_time=(?P<upstream_connect_time>.*) upstream_header_time=(?P<upstream_header_time>.*)$')
+#covnert metrics to proper types
+#.timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
+.timestamp, _ = to_float(.timestamp)
 .request_length = to_int!(.request_length)
 .status = to_int!(.status)
 .bytes_sent = to_int!(.bytes_sent)
@@ -23,17 +20,34 @@ source = """
 .upstream_response_time = to_float!(.upstream_response_time)
 .upstream_connect_time = to_float!(.upstream_connect_time)
 .upstream_header_time = to_float!(.upstream_header_time)
-.host = "YOUR_HOSTNAME_HERE"
 """
+
+[transforms.nginx-log-to-metric]
+type = "log_to_metric"
+inputs = [ "nginx-logs-remap" ]
+
+  [[transforms.nginx-log-to-metric.metrics]]
+  type = "histogram"
+  field = "timestamp"
+  name = "time_ms"
+
+    [transforms.nginx-log-to-metric.metrics.tags]
+    status = "{{status}}"
+    host = "{{client}}"
+
+[sources.nginx-metrics]
+type = "internal_metrics"
+namespace = "vector"
+scrape_interval_secs = 1
 
 [sinks.metrics-to-console]
 type = "console"
-inputs = ["nginx-metrics-remap"]
+inputs = ["nginx-log-to-metric"]
 target = "stdout"
 encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-metrics", "nginx-metrics-remap" ]
+inputs = [ "nginx-metrics", "nginx-logs-remap" ]
 namespace = "nginx-metrics"
 address = "0.0.0.0:8080"
