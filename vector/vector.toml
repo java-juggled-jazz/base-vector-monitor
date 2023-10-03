@@ -28,8 +28,9 @@ inputs = [ "nginx-logs-remap" ]
 
   [[transforms.nginx-log-to-metric.metrics]]
   type = "histogram"
-  field = "timestamp"
-  name = "time_ms"
+  field = "status"
+  name = "status"
+  namespace = "vector_metric"
 
     [transforms.nginx-log-to-metric.metrics.tags]
     status = "{{status}}"
@@ -48,6 +49,6 @@ encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-metrics", "nginx-logs-remap" ]
-namespace = "nginx-metrics"
+inputs = [ "nginx-metrics", "nginx-log-to-metric" ]
+default_namespace = "nginx-metrics"
 address = "0.0.0.0:8080"

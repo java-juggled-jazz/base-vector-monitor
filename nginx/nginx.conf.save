@@ -1,0 +1,43 @@
+events {
+	worker_connections 1024;
+}
+
+http {
+	server {
+		listen 80 default_server;
+		server_name _;
+
+		location / {
+			proxy_pass http://prometheus:9090;
+		}
+
+		location /grafana {
+			proxy_pass http://grafana:3000;
+			rewrite  ^/grafana/(.*)  /$1 break;
+			proxy_set_header Host $host;
+			proxy_set_header X-Forwarded-Server $host;
+			proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		}
+	}
+
+	log_format default '{$remote_addr}'
+
+#	log_format default '$remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" "$gzip_ratio"';
+
+#	log_format default '"$time_local" client=$remote_addr '
+#               'method=$request_method request="$request" '
+#               'request_length=$request_length '
+#               'status=$status bytes_sent=$bytes_sent '
+#               'body_bytes_sent=$body_bytes_sent '
+#               'referer=$http_referer '
+#               'user_agent="$http_user_agent" '
+#               'upstream_addr=$upstream_addr '
+#               'upstream_status=$upstream_status '
+#               'request_time=$request_time '
+#               'upstream_response_time=$upstream_response_time '
+#               'upstream_connect_time=$upstream_connect_time '
+#               'upstream_header_time=$upstream_header_time';
+
+	access_log /var/log/nginx/access.log default;
+	error_log /var/log/nginx/error.log;
+}
