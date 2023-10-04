@@ -3,11 +3,6 @@ type = "file"
 include = [$NGINX_LOGS_DIRECTORY]
 read_from = "beginning"
 
-[sources.auth-logs-scanner]
-type = "file"
-inclue = [$AUTH_LOGS_DIRECTORY]
-read_from = "beginning"
-
 [transforms.nginx-logs-remap]
 type = "remap"
 inputs = ["nginx-logs-scanner"]
@@ -27,6 +22,24 @@ source = """
 .upstream_header_time = to_float!(.upstream_header_time)
 """
 
+[sources.ssh-auth-logs-scanner]
+type = "file"
+inclue = [$AUTH_LOGS_DIRECTORY]
+read_from = "beginning"
+
+[transforms.ssh-auth-logs-remap]
+type = "remap"
+inputs = ["ssh-auth-logs-scanner"]
+source = """
+. |= parse_regex!(.message, r'^(?P<timestamp>) (?P<id>) sshd[(?P<pid>)]: (?P<status>) password for (?P<user>) from (?P<ip>) port (?P<port>) (?P<protocol>)$')
+#covnert metrics to proper types
+#.timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
+.timestamp, _ = to_float(.timestamp)
+.id = to_int(.id)
+.pid = to_int(.pid)
+.port = to_int(.port)
+"""
+
 [transforms.nginx-log-to-metric]
 type = "log_to_metric"
 inputs = [ "nginx-logs-remap" ]
@@ -43,12 +56,12 @@ inputs = [ "nginx-logs-remap" ]
 
 [sinks.metrics-to-console]
 type = "console"
-inputs = ["nginx-log-to-metric"]
+inputs = ["nginx-log-to-metric", "ssh-ath-logs-metric"]
 target = "stdout"
 encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-log-to-metric" ]
+inputs = [ "nginx-log-to-metric", "ssh-auth-logs-metric" ]
 default_namespace = "nginx-metrics"
 address = "0.0.0.0:8080"
