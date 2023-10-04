@@ -1,11 +1,16 @@
-[sources.nginx-file-scanner]
+[sources.nginx-logs-scanner]
 type = "file"
-include = ["/var/log/nginx/access.log"]
+include = [$NGINX_LOGS_DIRECTORY]
+read_from = "beginning"
+
+[sources.auth-logs-scanner]
+type = "file"
+inclue = [$AUTH_LOGS_DIRECTORY]
 read_from = "beginning"
 
 [transforms.nginx-logs-remap]
 type = "remap"
-inputs = ["nginx-file-scanner"]
+inputs = ["nginx-logs-scanner"]
 source = """
 . |= parse_regex!(.message, r'^\"(?P<timestamp>.*)\" client=(?P<client>.*) method=(?P<method>.*) request=\"(?P<method_type>.*) (?P<request_path>.*) (?P<http_version>.*)\" request_length=(?P<request_length>.*) status=(?P<status>.*) bytes_sent=(?P<bytes_sent>.*) body_bytes_sent=(?P<body_bytes_sent>.*) referer=(?P<referer>.*) user_agent=\"(?P<user_agent>.*)\" upstream_addr=(?P<upstream_addr>.*) upstream_status=(?P<upstream_status>.*) request_time=(?P<request_time>.*) upstream_response_time=(?P<upstream_response_time>.*) upstream_connect_time=(?P<upstream_connect_time>.*) upstream_header_time=(?P<upstream_header_time>.*)$')
 #covnert metrics to proper types
@@ -36,11 +41,6 @@ inputs = [ "nginx-logs-remap" ]
     status = "{{status}}"
     host = "{{client}}"
 
-[sources.nginx-metrics]
-type = "internal_metrics"
-namespace = "vector"
-scrape_interval_secs = 1
-
 [sinks.metrics-to-console]
 type = "console"
 inputs = ["nginx-log-to-metric"]
@@ -49,6 +49,6 @@ encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-metrics", "nginx-log-to-metric" ]
+inputs = [ "nginx-log-to-metric" ]
 default_namespace = "nginx-metrics"
 address = "0.0.0.0:8080"
