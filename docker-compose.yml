@@ -14,7 +14,7 @@ services:
       - prometheus-network
     volumes:
       - ${NGINX_CONF_DIR}:/etc/nginx/nginx.conf
-      - ${NGINX_LOG_DIR}:/var/log/nginx/
+      - ${NGINX_LOGS_DIR}:/var/log/nginx/
     depends_on:
       - grafana
       - prometheus
@@ -58,7 +58,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ${NGINX_LOG_DIR}:/var/log/nginx
+      - ${NGINX_LOGS_DIR}:/var/log/nginx/
+      - ${AUTH_LOG_DIR}:/var/log/auth.log
       - ${VECTOR_CONF_DIR}:/etc/vector/vector.toml
     depends_on:
       - prometheus

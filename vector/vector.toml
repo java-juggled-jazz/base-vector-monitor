@@ -1,6 +1,6 @@
 [sources.nginx-logs-scanner]
 type = "file"
-include = [$NGINX_LOGS_DIRECTORY]
+include = ["/var/log/nginx/access.log"]
 read_from = "beginning"
 
 [transforms.nginx-logs-remap]
@@ -22,46 +22,85 @@ source = """
 .upstream_header_time = to_float!(.upstream_header_time)
 """
 
+[transforms.nginx-logs-to-metric]
+type = "log_to_metric"
+inputs = [ "nginx-logs-remap" ]
+
+  [[transforms.nginx-logs-to-metric.metrics]]
+  type = "histogram"
+  name = "nginx_status"
+  field = "nginx_status"
+  namespace = "vector_metric"
+
+    [transforms.nginx-logs-to-metric.metrics.tags]
+    status = "{{status}}"
+
 [sources.ssh-auth-logs-scanner]
 type = "file"
-inclue = [$AUTH_LOGS_DIRECTORY]
+include = ["var/log/auth.log"]
 read_from = "beginning"
 
 [transforms.ssh-auth-logs-remap]
 type = "remap"
 inputs = ["ssh-auth-logs-scanner"]
 source = """
-. |= parse_regex!(.message, r'^(?P<timestamp>) (?P<id>) sshd[(?P<pid>)]: (?P<status>) password for (?P<user>) from (?P<ip>) port (?P<port>) (?P<protocol>)$')
+. |= parse_regex!(.message, r'^(?P<timestamp>) (?P<id>) sshd[(?P<pid>)]: (?P<status>) password for (?P<username>) from (?P<hostname>) port (?P<port>) (?P<protocol>)$')
 #covnert metrics to proper types
 #.timestamp = parse_timestamp(.timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
 .timestamp, _ = to_float(.timestamp)
-.id = to_int(.id)
-.pid = to_int(.pid)
-.port = to_int(.port)
+.id, _ = to_int(.id)
+.pid, _ = to_int(.pid)
+.port, _ = to_int(.port)
 """
 
-[transforms.nginx-log-to-metric]
+[transforms.ssh-auth-logs-to-metric]
 type = "log_to_metric"
-inputs = [ "nginx-logs-remap" ]
+inputs = [ "ssh-auth-logs-remap" ]
 
-  [[transforms.nginx-log-to-metric.metrics]]
+  [[transforms.ssh-auth-logs-to-metric.metrics]]
   type = "histogram"
-  field = "status"
-  name = "status"
+#  name = "status"
+  field = "ssh_auth_status"
   namespace = "vector_metric"
 
-    [transforms.nginx-log-to-metric.metrics.tags]
+    [transforms.ssh-auth-logs-to-metric.metrics.tags]
     status = "{{status}}"
-    host = "{{client}}"
+
+  [[transforms.ssh-auth-logs-to-metric.metrics]]
+  type = "histogram"
+#  field = "status"
+  field = "ssh_auth_hostname"
+  namespace = "vector_metric"
+
+    [transforms.ssh-auth-logs-to-metric.metrics.tags]
+    hostname = "{{hostname}}"
+
+  [[transforms.ssh-auth-logs-to-metric.metrics]]
+  type = "histogram"
+#  field = "status"
+  field = "ssh_auth_port"
+  namespace = "vector_metric"
+
+    [transforms.ssh-auth-logs-to-metric.metrics.tags]
+    port = "{{port}}"
+
+  [[transforms.ssh-auth-logs-to-metric.metrics]]
+  type = "histogram"
+#  field = "status"
+  field = "ssh_auth_username"
+  namespace = "vector_metric"
+
+    [transforms.ssh-auth-logs-to-metric.metrics.tags]
+    username = "{{username}}"
 
 [sinks.metrics-to-console]
 type = "console"
-inputs = ["nginx-log-to-metric", "ssh-ath-logs-metric"]
+inputs = ["nginx-logs-to-metric", "ssh-auth-logs-to-metric"]
 target = "stdout"
 encoding.codec = "json"
 
 [sinks.metrics-to-prometheus]
 type = "prometheus_exporter"
-inputs = [ "nginx-log-to-metric", "ssh-auth-logs-metric" ]
+inputs = [ "nginx-logs-to-metric", "ssh-auth-logs-to-metric" ]
 default_namespace = "nginx-metrics"
 address = "0.0.0.0:8080"
